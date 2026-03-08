@@ -12,8 +12,8 @@ services:
       - "3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
-      # Initialize the database with schema.sql
-      - ./backend/src/main/resources/schema.sql:/docker-entrypoint-initdb.d/init.sql
+      # Initialize the database with local data dump
+      - ./partjob_data.sql:/docker-entrypoint-initdb.d/init.sql
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
 
   backend:
