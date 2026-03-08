@@ -1,0 +1,56 @@
+---
+alwaysApply: true
+---
+# 元数据定义
+description: 企业级Vue 3项目规范
+globs: ["*.vue", "*.js", "*.jsx"]
+autoAttach: true
+
+---
+# 规则正文
+## 组件开发规范
+1. **单文件组件结构**：
+   ```vue
+   <template>
+  	 <!-- 模板内容，标签闭合规范 -->
+  	 
+     <div class="user-profile">
+       <h1>{{ userName }}</h1>
+       <button @click="handleClick">操作</button>
+     </div>
+   </template>
+   
+   <script setup>
+   // 导入语句
+   import { ref } from 'vue';
+
+   // 变量定义
+   const userName = ref('');
+
+   // 方法定义
+   const handleClick = () => { /* 逻辑 */ };
+   
+   </script>
+   
+   <style scoped>
+   .user-profile { /* 样式 */ }
+   </style>
+
+2. **命名规范**：
+   - 组件文件：大驼峰命名（`UserProfile.vue`）
+   - 自定义Hook：以`use`开头（`useUserStore.js`）
+   - 数据属性：小驼峰（`userInfo`）
+
+3. **状态管理**：
+	```js
+   // store/user.js
+   import { defineStore } from 'pinia';
+   export const useUserStore = defineStore('user', {
+     state: () => ({
+       userId: null,
+       token: ''
+     }),
+     actions: {
+       async fetchUserInfo() { /* 异步操作 */ }
+     }
+   });

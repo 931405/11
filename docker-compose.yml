@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: partjob_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: 123456
+      MYSQL_DATABASE: partjob
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      # Initialize the database with schema.sql
+      - ./backend/src/main/resources/schema.sql:/docker-entrypoint-initdb.d/init.sql
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: partjob_backend
+    restart: always
+    ports:
+      - "8081:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/partjob?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=utf-8&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: 123456
+    volumes:
+      # Map an external volume strictly for file uploads to survive container restarts
+      - partjob_uploads:/app/uploads
+    depends_on:
+      - db
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: partjob_frontend
+    restart: always
+    ports:
+      - "8088:80"
+    depends_on:
+      - backend
+
+volumes:
+  mysql_data:
+  partjob_uploads:

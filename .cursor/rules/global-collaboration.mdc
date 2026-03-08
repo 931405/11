@@ -1,0 +1,25 @@
+---
+alwaysApply: true
+---
+# global-collaboration.mdc
+description: Java+Vue团队协作总规范
+globs: ["*"]
+alwaysApply: true
+
+---
+## 联调规则
+1. **接口文档同步**：
+   - 后端使用Swagger生成接口文档，路径为`/api-docs`
+   - Vue前端通过`@file /api-docs`引用自动生成请求代码
+2. **数据格式约定**：
+   - 时间格式：统一为`yyyy-MM-dd HH:mm:ss`
+   - 分页参数：`page=1&size=10`
+   - 响应结构：
+     ```json
+     {
+       "code": 200,
+       "message": "成功",
+       "data": {}
+     }
+     ```
+

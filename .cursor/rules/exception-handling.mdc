@@ -1,0 +1,40 @@
+---
+alwaysApply: true
+---
+# exception-handling.mdc
+description: 前后端异常处理统一规范
+globs: ["*.java", "*.vue"]
+
+---
+## 异常处理流程
+1. **Java后端**：
+   ```java
+   @RestControllerAdvice
+   public class GlobalExceptionHandler {
+       @ExceptionHandler(BusinessException.class)
+       public ResponseEntity<ErrorResponse> handleBusinessException(
+           BusinessException ex) {
+           return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+               .body(new ErrorResponse(ex.getCode(), ex.getMessage()));
+       }
+   }
+
+2. **Vue前端**：
+   ```js
+   // 统一异常处理服务
+   export function handleError(error) {
+     if (error.response) {
+       // 4xx/5xx错误
+       const { status, data } = error.response;
+       ElNotification.error({
+         title: '请求错误',
+         message: data.message || `状态码: ${status}`
+       });
+     } else {
+       // 网络错误
+       ElNotification.error({
+         title: '网络异常',
+         message: '请检查网络连接'
+       });
+     }
+   }
