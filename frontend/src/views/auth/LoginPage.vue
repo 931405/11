@@ -3,7 +3,7 @@
     <div class="login-box">
       <div class="logo-wrapper">
         <el-icon :size="40" color="var(--color-accent)"><Briefcase /></el-icon>
-        <h2>兼职匹配平台</h2>
+        <h2>兼职通</h2>
       </div>
       
       <el-form :model="form" :rules="rules" ref="loginFormRef" size="large">

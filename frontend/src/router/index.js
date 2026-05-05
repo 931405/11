@@ -78,6 +78,18 @@ const routes = [
                 component: () => import('@/views/student/NotificationSettings.vue'),
                 meta: { requiresAuth: true, role: 'STUDENT' }
             },
+            {
+                path: 'student/feedback',
+                name: 'StudentFeedback',
+                component: () => import('@/views/student/FeedbackView.vue'),
+                meta: { requiresAuth: true, role: 'STUDENT' }
+            },
+            {
+                path: 'student/enterprise/:id',
+                name: 'EnterprisePublicProfile',
+                component: () => import('@/views/student/EnterprisePublicProfile.vue'),
+                meta: { requiresAuth: true, role: 'STUDENT' }
+            },
 
             // === Enterprise Routes ===
             {
@@ -126,6 +138,12 @@ const routes = [
                 path: 'enterprise/talents',
                 name: 'EnterpriseTalents',
                 component: () => import('@/views/enterprise/TalentPool.vue'),
+                meta: { requiresAuth: true, role: 'ENTERPRISE' }
+            },
+            {
+                path: 'enterprise/feedback',
+                name: 'EnterpriseFeedback',
+                component: () => import('@/views/enterprise/FeedbackView.vue'),
                 meta: { requiresAuth: true, role: 'ENTERPRISE' }
             },
 
@@ -204,7 +222,6 @@ router.beforeEach((to, from, next) => {
     if (to.meta.requiresAuth && !userStore.token) {
         next('/login')
     } else if (to.meta.role && userStore.userInfo.role !== to.meta.role) {
-        // Role matching
         next('/')
     } else {
         next()

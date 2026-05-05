@@ -28,6 +28,9 @@ public class Feedback {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
 
+    @Column(length = 200)
+    private String contactInfo;
+
     @Column(nullable = false, length = 20)
     private String status = "PENDING";
 

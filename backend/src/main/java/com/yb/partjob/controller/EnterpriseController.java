@@ -3,6 +3,8 @@ package com.yb.partjob.controller;
 import com.yb.partjob.model.EnterpriseInfo;
 import com.yb.partjob.model.JobPosition;
 import com.yb.partjob.model.StudentProfile;
+import com.yb.partjob.model.DataIntegrationRecord;
+import com.yb.partjob.model.dto.DataVerificationRequestDTO;
 import com.yb.partjob.model.dto.JobPositionDTO;
 import com.yb.partjob.model.vo.CandidateVO;
 import com.yb.partjob.model.vo.Result;
@@ -11,6 +13,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/enterprise")
@@ -91,9 +96,17 @@ public class EnterpriseController {
     @GetMapping("/talents")
     public Result<Page<CandidateVO>> searchTalents(
             @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String educationLevel,
+            @RequestParam(required = false) String major,
+            @RequestParam(required = false) String expectedLocation,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size) {
-        return Result.success(enterpriseService.searchTalents(keyword, page, size));
+        return Result.success(enterpriseService.searchTalents(keyword, educationLevel, major, expectedLocation, page, size));
+    }
+
+    @GetMapping("/talents/filter-options")
+    public Result<Map<String, List<String>>> getTalentFilterOptions() {
+        return Result.success(enterpriseService.getTalentFilterOptions());
     }
 
     @PostMapping("/talents/invite")
@@ -107,5 +120,29 @@ public class EnterpriseController {
     public Result<com.yb.partjob.model.vo.TrendVO> getDailyApplicationTrend(Authentication auth) {
         Long userId = (Long) auth.getPrincipal();
         return Result.success(enterpriseService.getDailyApplicationTrend(userId));
+    }
+
+    @GetMapping("/dashboard/analytics")
+    public Result<Map<String, Object>> getDashboardAnalytics(Authentication auth) {
+        Long userId = (Long) auth.getPrincipal();
+        return Result.success(enterpriseService.getEnterpriseAnalytics(userId));
+    }
+
+    @GetMapping("/jobs/{jobId}/matches")
+    public Result<Page<CandidateVO>> getJobMatches(Authentication auth,
+            @PathVariable Long jobId,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        Long userId = (Long) auth.getPrincipal();
+        return Result.success(enterpriseService.getJobMatches(userId, jobId, page, size));
+    }
+
+    @PostMapping("/jobs/{jobId}/verification-request")
+    public Result<DataIntegrationRecord> submitVerificationRequest(Authentication auth,
+            @PathVariable Long jobId,
+            @RequestBody(required = false) DataVerificationRequestDTO dto) {
+        Long userId = (Long) auth.getPrincipal();
+        return Result.success(enterpriseService.submitJobVerificationRequest(userId, jobId,
+                dto != null ? dto : new DataVerificationRequestDTO()));
     }
 }

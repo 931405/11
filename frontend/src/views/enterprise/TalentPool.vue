@@ -8,6 +8,7 @@
       <div class="header-actions">
         <el-input
           v-model="searchKeyword"
+          class="header-search-input"
           placeholder="搜索学校、专业、技能标签"
           clearable
           style="width: 250px"
@@ -18,6 +19,55 @@
             <el-button @click="handleSearch"><el-icon><Search /></el-icon></el-button>
           </template>
         </el-input>
+
+        <el-select
+          v-model="selectedEducationLevel"
+          class="filter-select"
+          placeholder="选择学历"
+          clearable
+          @change="handleFilterChange"
+        >
+          <el-option
+            v-for="education in educationOptions"
+            :key="education"
+            :label="formatEducationLabel(education)"
+            :value="education"
+          />
+        </el-select>
+
+        <el-select
+          v-model="selectedMajor"
+          class="filter-select major-select"
+          placeholder="选择专业"
+          clearable
+          filterable
+          @change="handleFilterChange"
+        >
+          <el-option
+            v-for="major in majorOptions"
+            :key="major"
+            :label="major"
+            :value="major"
+          />
+        </el-select>
+
+        <el-select
+          v-model="selectedCity"
+          class="filter-select"
+          placeholder="选择城市"
+          clearable
+          filterable
+          @change="handleFilterChange"
+        >
+          <el-option
+            v-for="city in cityOptions"
+            :key="city"
+            :label="city"
+            :value="city"
+          />
+        </el-select>
+
+        <el-button @click="handleResetFilters">重置筛选</el-button>
       </div>
     </div>
 
@@ -202,7 +252,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { searchTalents, inviteTalent, getEnterpriseJobs } from '@/api/enterprise'
+import { searchTalents, inviteTalent, getEnterpriseJobs, getTalentFilterOptions } from '@/api/enterprise'
 import { ElMessage } from 'element-plus'
 import { Search, Download } from '@element-plus/icons-vue'
 
@@ -213,6 +263,13 @@ const total = ref(0)
 const currentPage = ref(1)
 const pageSize = ref(10)
 const searchKeyword = ref('')
+const selectedEducationLevel = ref('')
+const selectedMajor = ref('')
+const selectedCity = ref('')
+const educationOptions = ref([])
+const majorOptions = ref([])
+const cityOptions = ref([])
+const defaultEducationOptions = ['大专', '本科', '硕士', '博士']
 
 const drawerVisible = ref(false)
 const drawerCandidate = ref(null)
@@ -236,16 +293,55 @@ const fetchTalents = async () => {
     const params = {
       page: currentPage.value,
       size: pageSize.value,
-      keyword: searchKeyword.value
+      keyword: searchKeyword.value,
+      educationLevel: selectedEducationLevel.value,
+      major: selectedMajor.value,
+      expectedLocation: selectedCity.value
     }
     const res = await searchTalents(params)
     talents.value = res.content || []
     total.value = res.totalElements || 0
+    syncFilterOptionsFromTalents(talents.value)
   } catch (error) {
     ElMessage.error('加载候选人失败')
   } finally {
     loading.value = false
   }
+}
+
+const fetchTalentFilterOptions = async () => {
+  try {
+    const res = await getTalentFilterOptions()
+    educationOptions.value = mergeOptions(defaultEducationOptions, res.educationLevels || [])
+    majorOptions.value = mergeOptions([], res.majors || [])
+    cityOptions.value = mergeOptions([], res.locations || [])
+  } catch (error) {
+    educationOptions.value = [...defaultEducationOptions]
+    console.error('Failed to load talent filters', error)
+  }
+}
+
+const mergeOptions = (baseOptions, incomingOptions) => {
+  return Array.from(new Set([...(baseOptions || []), ...(incomingOptions || [])].filter(Boolean)))
+}
+
+const syncFilterOptionsFromTalents = (rows = []) => {
+  const educationFromRows = rows
+    .map(row => row.educationLevel?.trim())
+    .filter(Boolean)
+  const majorFromRows = rows
+    .map(row => row.major?.trim())
+    .filter(Boolean)
+  const cityFromRows = rows
+    .map(row => row.expectedLocation?.trim())
+    .filter(Boolean)
+
+  educationOptions.value = mergeOptions(
+    educationOptions.value.length > 0 ? educationOptions.value : defaultEducationOptions,
+    educationFromRows
+  )
+  majorOptions.value = mergeOptions(majorOptions.value, majorFromRows)
+  cityOptions.value = mergeOptions(cityOptions.value, cityFromRows)
 }
 
 const fetchActiveJobs = async () => {
@@ -260,6 +356,20 @@ const fetchActiveJobs = async () => {
 }
 
 const handleSearch = () => {
+  currentPage.value = 1
+  fetchTalents()
+}
+
+const handleFilterChange = () => {
+  currentPage.value = 1
+  fetchTalents()
+}
+
+const handleResetFilters = () => {
+  searchKeyword.value = ''
+  selectedEducationLevel.value = ''
+  selectedMajor.value = ''
+  selectedCity.value = ''
   currentPage.value = 1
   fetchTalents()
 }
@@ -281,6 +391,15 @@ const parseSkills = (skillsJson) => {
   } catch {
     return []
   }
+}
+
+const formatEducationLabel = (education) => {
+  if (education === '大专') return '专科'
+  if (education === 'ASSOCIATE' || education === 'JUNIOR_COLLEGE') return '专科'
+  if (education === 'BACHELOR') return '本科'
+  if (education === 'MASTER') return '硕士'
+  if (education === 'PHD' || education === 'DOCTOR') return '博士'
+  return education
 }
 
 const openDrawer = (candidate) => {
@@ -352,6 +471,7 @@ const submitInvite = async () => {
 
 onMounted(() => {
   fetchTalents()
+  fetchTalentFilterOptions()
   fetchActiveJobs() // Preload jobs for the invite dialog
 })
 </script>
@@ -361,11 +481,27 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
+  gap: 16px;
   margin-bottom: 24px;
   background: var(--color-bg-card);
   padding: 20px 24px;
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.filter-select {
+  width: 140px;
+}
+
+.major-select {
+  width: 200px;
 }
 
 .header-title {
@@ -477,4 +613,21 @@ onMounted(() => {
 
 .mt-4 { margin-top: 24px; }
 .mb-4 { margin-bottom: 24px; }
+
+@media (max-width: 960px) {
+  .page-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .header-actions {
+    justify-content: flex-start;
+  }
+
+  .header-search-input,
+  .filter-select,
+  .major-select {
+    width: 100% !important;
+  }
+}
 </style>

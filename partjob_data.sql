@@ -569,4 +569,48 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
+--
+-- Table structure for table `data_integration_record`
+--
+
+DROP TABLE IF EXISTS `data_integration_record`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `data_integration_record` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `source_type` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Integration source type',
+  `source_name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Integration source name',
+  `target_type` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Target domain type',
+  `target_id` bigint NOT NULL COMMENT 'Target record ID',
+  `submitted_by_user_id` bigint DEFAULT NULL COMMENT 'Submitting user ID',
+  `authorization_status` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'NOT_REQUIRED' COMMENT 'NOT_REQUIRED, AUTHORIZED, REVOKED',
+  `verification_status` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'PENDING' COMMENT 'PENDING, VERIFIED, REJECTED',
+  `quality_score` decimal(5,2) DEFAULT NULL COMMENT 'Normalized quality score',
+  `raw_payload` text COLLATE utf8mb4_unicode_ci COMMENT 'Original payload snapshot',
+  `normalized_payload` text COLLATE utf8mb4_unicode_ci COMMENT 'Normalized payload snapshot',
+  `rule_version` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Applied rule version',
+  `remark` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Review or sync remark',
+  `last_verified_at` datetime DEFAULT NULL COMMENT 'Latest verification time',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_data_integration_source_target` (`source_type`,`target_type`,`target_id`),
+  KEY `idx_data_integration_target` (`target_type`,`target_id`),
+  KEY `idx_data_integration_verification` (`verification_status`),
+  KEY `idx_data_integration_source` (`source_type`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Normalized integration records across student, enterprise, and job data';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Default config for data integration rules
+--
+
+INSERT INTO `sys_config` (`config_key`, `config_value`, `description`) VALUES
+('data_collection_rules', 'Collect profile, behavior, enterprise and posting data after user authorization or platform approval.', 'Collection rule for integration sources'),
+('data_cleaning_standard', 'Trim blanks, normalize skills/location labels, reject empty key fields, keep latest verified snapshot.', 'Cleaning rule for normalized records'),
+('source_quality_threshold', '75', 'Quality threshold for highlighted records')
+ON DUPLICATE KEY UPDATE
+`config_value` = VALUES(`config_value`),
+`description` = VALUES(`description`);
+
 -- Dump completed on 2026-03-08  9:49:28

@@ -93,6 +93,13 @@ export const searchTalents = (params) => {
     })
 }
 
+export const getTalentFilterOptions = () => {
+    return request({
+        url: '/api/enterprise/talents/filter-options',
+        method: 'get'
+    })
+}
+
 export const inviteTalent = (data) => {
     return request({
         url: '/api/enterprise/talents/invite',

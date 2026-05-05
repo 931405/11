@@ -1,30 +1,29 @@
 package com.yb.partjob.service.impl;
 
 import com.yb.partjob.exception.BusinessException;
+import com.yb.partjob.model.ChatMessage;
+import com.yb.partjob.model.DataIntegrationRecord;
 import com.yb.partjob.model.EnterpriseInfo;
+import com.yb.partjob.model.InterviewInvitation;
 import com.yb.partjob.model.JobApplication;
 import com.yb.partjob.model.JobPosition;
+import com.yb.partjob.model.MatchScore;
 import com.yb.partjob.model.StudentProfile;
+import com.yb.partjob.model.dto.DataVerificationRequestDTO;
+import com.yb.partjob.model.dto.InterviewInvitationDTO;
+import com.yb.partjob.model.dto.InviteDTO;
 import com.yb.partjob.model.dto.JobPositionDTO;
 import com.yb.partjob.model.vo.CandidateVO;
+import com.yb.partjob.model.vo.InterviewInvitationVO;
 import com.yb.partjob.model.vo.TrendVO;
+import com.yb.partjob.repository.ChatMessageRepository;
 import com.yb.partjob.repository.EnterpriseInfoRepository;
+import com.yb.partjob.repository.InterviewInvitationRepository;
 import com.yb.partjob.repository.JobApplicationRepository;
 import com.yb.partjob.repository.JobPositionRepository;
+import com.yb.partjob.repository.MatchScoreRepository;
 import com.yb.partjob.repository.StudentProfileRepository;
 import com.yb.partjob.repository.SysUserRepository;
-import com.yb.partjob.repository.ChatMessageRepository;
-import com.yb.partjob.model.ChatMessage;
-import com.yb.partjob.model.dto.InviteDTO;
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-import com.yb.partjob.repository.InterviewInvitationRepository;
-import com.yb.partjob.model.InterviewInvitation;
-import com.yb.partjob.model.dto.InterviewInvitationDTO;
-import com.yb.partjob.model.vo.InterviewInvitationVO;
 import com.yb.partjob.service.IEnterpriseService;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,6 +32,16 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 public class EnterpriseServiceImpl implements IEnterpriseService {
@@ -58,6 +67,12 @@ public class EnterpriseServiceImpl implements IEnterpriseService {
     @Autowired
     private InterviewInvitationRepository interviewInvitationRepository;
 
+    @Autowired
+    private MatchScoreRepository matchScoreRepository;
+
+    @Autowired
+    private DataIntegrationService dataIntegrationService;
+
     @Override
     public EnterpriseInfo getEnterpriseInfo(Long userId) {
         return enterpriseInfoRepository.findByUserId(userId)
@@ -69,24 +84,18 @@ public class EnterpriseServiceImpl implements IEnterpriseService {
         EnterpriseInfo existing = enterpriseInfoRepository.findByUserId(userId)
                 .orElseThrow(() -> new BusinessException("Enterprise info not found"));
 
-        if (info.getCompanyName() != null)
-            existing.setCompanyName(info.getCompanyName());
-        if (info.getIndustry() != null)
-            existing.setIndustry(info.getIndustry());
-        if (info.getCompanySize() != null)
-            existing.setCompanySize(info.getCompanySize());
-        if (info.getContactPerson() != null)
-            existing.setContactPerson(info.getContactPerson());
-        if (info.getContactPhone() != null)
-            existing.setContactPhone(info.getContactPhone());
-        if (info.getCompanyAddress() != null)
-            existing.setCompanyAddress(info.getCompanyAddress());
-        if (info.getBusinessLicense() != null)
-            existing.setBusinessLicense(info.getBusinessLicense());
-        if (info.getDescription() != null)
-            existing.setDescription(info.getDescription());
+        if (info.getCompanyName() != null) existing.setCompanyName(info.getCompanyName());
+        if (info.getIndustry() != null) existing.setIndustry(info.getIndustry());
+        if (info.getCompanySize() != null) existing.setCompanySize(info.getCompanySize());
+        if (info.getContactPerson() != null) existing.setContactPerson(info.getContactPerson());
+        if (info.getContactPhone() != null) existing.setContactPhone(info.getContactPhone());
+        if (info.getCompanyAddress() != null) existing.setCompanyAddress(info.getCompanyAddress());
+        if (info.getBusinessLicense() != null) existing.setBusinessLicense(info.getBusinessLicense());
+        if (info.getDescription() != null) existing.setDescription(info.getDescription());
 
-        return enterpriseInfoRepository.save(existing);
+        EnterpriseInfo saved = enterpriseInfoRepository.save(existing);
+        dataIntegrationService.syncEnterpriseProfile(userId, saved);
+        return saved;
     }
 
     @Override
@@ -102,6 +111,7 @@ public class EnterpriseServiceImpl implements IEnterpriseService {
         JobPosition job = JobPosition.builder()
                 .enterpriseId(enterprise.getId())
                 .title(dto.getTitle())
+                .jobType(dto.getJobType())
                 .categoryId(dto.getCategoryId())
                 .description(dto.getDescription())
                 .requirements(dto.getRequirements())
@@ -116,7 +126,9 @@ public class EnterpriseServiceImpl implements IEnterpriseService {
                 .applyCount(0)
                 .build();
 
-        return jobPositionRepository.save(job);
+        JobPosition saved = jobPositionRepository.save(job);
+        dataIntegrationService.syncJobProfile(userId, saved);
+        return saved;
     }
 
     @Override
@@ -132,30 +144,22 @@ public class EnterpriseServiceImpl implements IEnterpriseService {
             throw new BusinessException("Not authorized to update this job");
         }
 
-        if (dto.getTitle() != null)
-            job.setTitle(dto.getTitle());
-        if (dto.getCategoryId() != null)
-            job.setCategoryId(dto.getCategoryId());
-        if (dto.getDescription() != null)
-            job.setDescription(dto.getDescription());
-        if (dto.getRequirements() != null)
-            job.setRequirements(dto.getRequirements());
-        if (dto.getSkillsRequired() != null)
-            job.setSkillsRequired(dto.getSkillsRequired());
-        if (dto.getSalaryMin() != null)
-            job.setSalaryMin(dto.getSalaryMin());
-        if (dto.getSalaryMax() != null)
-            job.setSalaryMax(dto.getSalaryMax());
-        if (dto.getWorkLocation() != null)
-            job.setWorkLocation(dto.getWorkLocation());
-        if (dto.getWorkSchedule() != null)
-            job.setWorkSchedule(dto.getWorkSchedule());
-        if (dto.getHeadcount() != null)
-            job.setHeadcount(dto.getHeadcount());
-        if (dto.getStatus() != null)
-            job.setStatus(dto.getStatus());
+        if (dto.getTitle() != null) job.setTitle(dto.getTitle());
+        if (dto.getJobType() != null) job.setJobType(dto.getJobType());
+        if (dto.getCategoryId() != null) job.setCategoryId(dto.getCategoryId());
+        if (dto.getDescription() != null) job.setDescription(dto.getDescription());
+        if (dto.getRequirements() != null) job.setRequirements(dto.getRequirements());
+        if (dto.getSkillsRequired() != null) job.setSkillsRequired(dto.getSkillsRequired());
+        if (dto.getSalaryMin() != null) job.setSalaryMin(dto.getSalaryMin());
+        if (dto.getSalaryMax() != null) job.setSalaryMax(dto.getSalaryMax());
+        if (dto.getWorkLocation() != null) job.setWorkLocation(dto.getWorkLocation());
+        if (dto.getWorkSchedule() != null) job.setWorkSchedule(dto.getWorkSchedule());
+        if (dto.getHeadcount() != null) job.setHeadcount(dto.getHeadcount());
+        if (dto.getStatus() != null) job.setStatus(dto.getStatus());
 
-        return jobPositionRepository.save(job);
+        JobPosition saved = jobPositionRepository.save(job);
+        dataIntegrationService.syncJobProfile(userId, saved);
+        return saved;
     }
 
     @Override
@@ -182,58 +186,21 @@ public class EnterpriseServiceImpl implements IEnterpriseService {
         if (status != null && !status.trim().isEmpty()) {
             return jobPositionRepository.findByEnterpriseIdAndStatus(enterprise.getId(), status,
                     PageRequest.of(page - 1, size, Sort.by(Sort.Direction.DESC, "createdAt")));
-        } else {
-            return jobPositionRepository.findByEnterpriseId(enterprise.getId(),
-                    PageRequest.of(page - 1, size, Sort.by(Sort.Direction.DESC, "createdAt")));
         }
+        return jobPositionRepository.findByEnterpriseId(enterprise.getId(),
+                PageRequest.of(page - 1, size, Sort.by(Sort.Direction.DESC, "createdAt")));
     }
 
     @Override
     public Page<CandidateVO> getJobCandidates(Long userId, Long jobId, int page, int size) {
-        EnterpriseInfo enterprise = enterpriseInfoRepository.findByUserId(userId)
-                .orElseThrow(() -> new BusinessException("Enterprise info not found"));
-
-        JobPosition job = jobPositionRepository.findById(jobId)
-                .orElseThrow(() -> new BusinessException("Job not found"));
-
-        if (!job.getEnterpriseId().equals(enterprise.getId())) {
-            throw new BusinessException("Not authorized to view candidates for this job");
-        }
+        EnterpriseInfo enterprise = requireEnterprise(userId);
+        JobPosition job = requireOwnedJob(enterprise, jobId);
 
         Page<JobApplication> applications = applicationRepository.findByJobId(jobId,
                 PageRequest.of(page - 1, size, Sort.by(Sort.Direction.DESC, "createdAt")));
 
-        return applications.map(app -> {
-            CandidateVO vo = new CandidateVO();
-            vo.setApplicationId(app.getId());
-            vo.setStudentId(app.getStudentId());
-            vo.setStatus(app.getStatus());
-            vo.setApplyMessage(app.getApplyMessage());
-            vo.setEnterpriseRemark(app.getEnterpriseRemark());
-            vo.setAppliedAt(app.getCreatedAt());
-
-            // Enrich with student user info
-            sysUserRepository.findById(app.getStudentId()).ifPresent(user -> {
-                vo.setStudentName(user.getRealName());
-                vo.setAvatar(user.getAvatar());
-            });
-
-            // Enrich with student profile info
-            studentProfileRepository.findByUserId(app.getStudentId()).ifPresent(profile -> {
-                vo.setUniversity(profile.getUniversity());
-                vo.setMajor(profile.getMajor());
-                vo.setEducationLevel(profile.getEducationLevel());
-                vo.setEnrollmentYear(profile.getEnrollmentYear());
-                vo.setSkills(profile.getSkills());
-                vo.setSelfIntro(profile.getSelfIntro());
-                vo.setExpectedSalaryMin(profile.getExpectedSalaryMin());
-                vo.setExpectedSalaryMax(profile.getExpectedSalaryMax());
-                vo.setExpectedLocation(profile.getExpectedLocation());
-                vo.setAvailableSchedule(profile.getAvailableSchedule());
-            });
-
-            return vo;
-        });
+        return applications.map(app -> buildCandidateVO(resolveStudentProfileByProfileId(app.getStudentId()), app, job.getId(),
+                true));
     }
 
     @Override
@@ -243,53 +210,76 @@ public class EnterpriseServiceImpl implements IEnterpriseService {
     }
 
     @Override
-    public Page<CandidateVO> searchTalents(String keyword, int page, int size) {
+    public Page<CandidateVO> searchTalents(String keyword, String educationLevel, String major, String expectedLocation, int page, int size) {
         Page<StudentProfile> profiles = studentProfileRepository.searchPublicProfiles(
-                keyword,
+                normalizeFilter(keyword),
+                normalizeFilter(educationLevel),
+                normalizeFilter(major),
+                normalizeFilter(expectedLocation),
                 PageRequest.of(page - 1, size, Sort.by(Sort.Direction.DESC, "updatedAt")));
 
-        return profiles.map(profile -> {
-            CandidateVO vo = new CandidateVO();
-            vo.setStudentId(profile.getUserId());
-            vo.setUniversity(profile.getUniversity());
-            vo.setMajor(profile.getMajor());
-            vo.setEducationLevel(profile.getEducationLevel());
-            vo.setEnrollmentYear(profile.getEnrollmentYear());
-            vo.setSkills(profile.getSkills());
-            vo.setSelfIntro(profile.getSelfIntro());
-            vo.setExpectedSalaryMin(profile.getExpectedSalaryMin());
-            vo.setExpectedSalaryMax(profile.getExpectedSalaryMax());
-            vo.setExpectedLocation(profile.getExpectedLocation());
-            vo.setAvailableSchedule(profile.getAvailableSchedule());
+        return profiles.map(profile -> buildCandidateVO(profile, null, null, false));
+    }
 
-            sysUserRepository.findById(profile.getUserId()).ifPresent(user -> {
-                vo.setStudentName(user.getRealName());
-                vo.setAvatar(user.getAvatar());
-            });
+    @Override
+    public Map<String, List<String>> getTalentFilterOptions() {
+        Map<String, Integer> educationOrder = new LinkedHashMap<>();
+        educationOrder.put("大专", 1);
+        educationOrder.put("专科", 1);
+        educationOrder.put("本科", 2);
+        educationOrder.put("硕士", 3);
+        educationOrder.put("博士", 4);
 
-            return vo;
-        });
+        List<String> educationLevels = studentProfileRepository.findDistinctPublicEducationLevels().stream()
+                .map(String::trim)
+                .filter(value -> !value.isEmpty())
+                .distinct()
+                .sorted(Comparator
+                        .comparingInt((String value) -> educationOrder.getOrDefault(value, Integer.MAX_VALUE))
+                        .thenComparing(String::compareTo))
+                .collect(Collectors.toList());
+
+        if (educationLevels.isEmpty()) {
+            educationLevels = new ArrayList<>(List.of("大专", "本科", "硕士", "博士"));
+        }
+
+        List<String> majors = studentProfileRepository.findDistinctPublicMajors().stream()
+                .map(String::trim)
+                .filter(value -> !value.isEmpty())
+                .distinct()
+                .collect(Collectors.toList());
+
+        List<String> locations = studentProfileRepository.findDistinctPublicLocations().stream()
+                .map(String::trim)
+                .filter(value -> !value.isEmpty())
+                .distinct()
+                .collect(Collectors.toList());
+
+        Map<String, List<String>> result = new LinkedHashMap<>();
+        result.put("educationLevels", educationLevels);
+        result.put("majors", majors);
+        result.put("locations", locations);
+        return result;
     }
 
     @Override
     @Transactional
     public Long inviteTalent(Long enterpriseUserId, InviteDTO dto) {
-        EnterpriseInfo enterprise = enterpriseInfoRepository.findByUserId(enterpriseUserId)
-                .orElseThrow(() -> new BusinessException("Enterprise info not found"));
+        EnterpriseInfo enterprise = requireEnterprise(enterpriseUserId);
+        JobPosition job = requireOwnedJob(enterprise, dto.getJobId());
 
-        JobPosition job = jobPositionRepository.findById(dto.getJobId())
-                .orElseThrow(() -> new BusinessException("Job not found"));
-
-        if (!job.getEnterpriseId().equals(enterprise.getId())) {
-            throw new BusinessException("Not authorized to invite for this job");
+        StudentProfile studentProfile = studentProfileRepository.findByUserId(dto.getStudentId())
+                .orElseGet(() -> studentProfileRepository.findById(dto.getStudentId()).orElse(null));
+        if (studentProfile == null) {
+            throw new BusinessException("Student profile not found");
         }
 
-        if (applicationRepository.existsByStudentIdAndJobId(dto.getStudentId(), dto.getJobId())) {
-            throw new BusinessException("已存在该职位的投递或邀请记录");
+        if (applicationRepository.existsByStudentIdAndJobId(studentProfile.getId(), dto.getJobId())) {
+            throw new BusinessException("Candidate already has an application or invitation for this job");
         }
 
         JobApplication application = JobApplication.builder()
-                .studentId(dto.getStudentId())
+                .studentId(studentProfile.getId())
                 .jobId(dto.getJobId())
                 .status("INVITED")
                 .build();
@@ -306,22 +296,18 @@ public class EnterpriseServiceImpl implements IEnterpriseService {
                 .build();
 
         chatMessageRepository.save(message);
-
         return savedApp.getId();
     }
 
     @Override
     @Transactional
     public void updateApplicationStatus(Long userId, Long applicationId, String status, String remark) {
-        EnterpriseInfo enterprise = enterpriseInfoRepository.findByUserId(userId)
-                .orElseThrow(() -> new BusinessException("Enterprise info not found"));
+        EnterpriseInfo enterprise = requireEnterprise(userId);
 
         JobApplication application = applicationRepository.findById(applicationId)
                 .orElseThrow(() -> new BusinessException("Application not found"));
 
-        JobPosition job = jobPositionRepository.findById(application.getJobId())
-                .orElseThrow(() -> new BusinessException("Job not found"));
-
+        JobPosition job = requireOwnedJob(enterprise, application.getJobId());
         if (!job.getEnterpriseId().equals(enterprise.getId())) {
             throw new BusinessException("Not authorized to update this application");
         }
@@ -335,8 +321,7 @@ public class EnterpriseServiceImpl implements IEnterpriseService {
 
     @Override
     public TrendVO getDailyApplicationTrend(Long enterpriseUserId) {
-        EnterpriseInfo enterprise = enterpriseInfoRepository.findByUserId(enterpriseUserId)
-                .orElseThrow(() -> new BusinessException("Enterprise info not found"));
+        EnterpriseInfo enterprise = requireEnterprise(enterpriseUserId);
 
         List<JobPosition> jobs = jobPositionRepository
                 .findByEnterpriseId(enterprise.getId(), org.springframework.data.domain.Pageable.unpaged())
@@ -383,23 +368,19 @@ public class EnterpriseServiceImpl implements IEnterpriseService {
     @Override
     @Transactional
     public void sendInterviewInvitation(Long enterpriseUserId, InterviewInvitationDTO dto) {
-        EnterpriseInfo enterprise = enterpriseInfoRepository.findByUserId(enterpriseUserId)
-                .orElseThrow(() -> new BusinessException("Enterprise info not found"));
+        EnterpriseInfo enterprise = requireEnterprise(enterpriseUserId);
 
         JobApplication application = applicationRepository.findById(dto.getApplicationId())
                 .orElseThrow(() -> new BusinessException("Application not found"));
 
-        JobPosition job = jobPositionRepository.findById(application.getJobId())
-                .orElseThrow(() -> new BusinessException("Job not found"));
+        JobPosition job = requireOwnedJob(enterprise, application.getJobId());
 
-        if (!job.getEnterpriseId().equals(enterprise.getId())) {
-            throw new BusinessException("Not authorized to send invitation for this job");
-        }
-
-        // Prevent duplicate invites for the same application
         if (interviewInvitationRepository.existsByApplicationId(application.getId())) {
             throw new BusinessException("Interview invitation already sent for this application");
         }
+
+        studentProfileRepository.findById(application.getStudentId())
+                .orElseThrow(() -> new BusinessException("Student profile not found"));
 
         InterviewInvitation invitation = InterviewInvitation.builder()
                 .applicationId(application.getId())
@@ -415,20 +396,15 @@ public class EnterpriseServiceImpl implements IEnterpriseService {
 
         interviewInvitationRepository.save(invitation);
 
-        // Automatically update the application status
         application.setStatus("INTERVIEW");
         applicationRepository.save(application);
 
-        // Send a chat message notification
-        studentProfileRepository.findByUserId(application.getStudentId())
-                .orElseThrow(() -> new BusinessException("Student profile not found"));
-
         String chatMessageContent = String.format(
-                "【面试邀请】您好，我们诚挚邀请您参加面试！\n面试时间: %s\n面试地点/链接: %s\n联系人: %s%s",
-                dto.getInterviewTime().toString(),
+                "Interview invitation%nTime: %s%nLocation: %s%nContact: %s%s",
+                dto.getInterviewTime(),
                 dto.getLocation(),
                 dto.getContact(),
-                (dto.getMessage() != null && !dto.getMessage().isEmpty()) ? "\n附加信息: " + dto.getMessage() : "");
+                (dto.getMessage() != null && !dto.getMessage().isBlank()) ? "%nNote: " + dto.getMessage() : "");
 
         ChatMessage message = ChatMessage.builder()
                 .applicationId(application.getId())
@@ -444,8 +420,7 @@ public class EnterpriseServiceImpl implements IEnterpriseService {
 
     @Override
     public Page<InterviewInvitationVO> getEnterpriseInvitations(Long enterpriseUserId, int page, int size) {
-        EnterpriseInfo enterprise = enterpriseInfoRepository.findByUserId(enterpriseUserId)
-                .orElseThrow(() -> new BusinessException("Enterprise info not found"));
+        EnterpriseInfo enterprise = requireEnterprise(enterpriseUserId);
 
         Page<InterviewInvitation> invitations = interviewInvitationRepository.findByEnterpriseId(
                 enterprise.getId(),
@@ -460,10 +435,175 @@ public class EnterpriseServiceImpl implements IEnterpriseService {
 
             vo.setCompanyName(enterprise.getCompanyName());
 
-            sysUserRepository.findById(inv.getStudentId())
+            studentProfileRepository.findById(inv.getStudentId())
+                    .flatMap(profile -> sysUserRepository.findById(profile.getUserId()))
                     .ifPresent(user -> vo.setStudentName(user.getRealName()));
 
             return vo;
         });
+    }
+
+    @Override
+    public Page<CandidateVO> getJobMatches(Long userId, Long jobId, int page, int size) {
+        EnterpriseInfo enterprise = requireEnterprise(userId);
+        requireOwnedJob(enterprise, jobId);
+
+        Page<MatchScore> matches = matchScoreRepository.findByJobIdOrderByTotalScoreDesc(jobId,
+                PageRequest.of(page - 1, size));
+
+        return matches.map(match -> buildCandidateVO(resolveStudentProfileByProfileId(match.getStudentId()), null, jobId,
+                true));
+    }
+
+    @Override
+    public Map<String, Object> getEnterpriseAnalytics(Long userId) {
+        EnterpriseInfo enterprise = requireEnterprise(userId);
+        List<JobPosition> jobs = jobPositionRepository.findByEnterpriseId(enterprise.getId(),
+                org.springframework.data.domain.Pageable.unpaged()).getContent();
+        List<Long> jobIds = jobs.stream().map(JobPosition::getId).toList();
+
+        long openJobs = jobs.stream().filter(job -> "OPEN".equals(job.getStatus())).count();
+        long closedJobs = jobs.size() - openJobs;
+        long totalApplications = jobs.stream().mapToLong(job -> applicationRepository.countByJobId(job.getId())).sum();
+        long pendingApplications = jobs.stream()
+                .mapToLong(job -> applicationRepository.countByJobIdAndStatus(job.getId(), "APPLIED")
+                        + applicationRepository.countByJobIdAndStatus(job.getId(), "REVIEWING"))
+                .sum();
+        long interviewingApplications = jobs.stream()
+                .mapToLong(job -> applicationRepository.countByJobIdAndStatus(job.getId(), "INTERVIEW"))
+                .sum();
+        long matchedTalents = jobIds.stream()
+                .mapToLong(jobId -> matchScoreRepository.countByJobIdAndTotalScoreGreaterThanEqual(jobId,
+                        new BigDecimal("75")))
+                .sum();
+
+        BigDecimal averageMatchScore = BigDecimal.ZERO;
+        List<MatchScore> sampleScores = new ArrayList<>();
+        for (Long jobId : jobIds) {
+            sampleScores.addAll(matchScoreRepository.findByJobIdOrderByTotalScoreDesc(jobId, PageRequest.of(0, 20))
+                    .getContent());
+        }
+        if (!sampleScores.isEmpty()) {
+            BigDecimal total = sampleScores.stream()
+                    .map(MatchScore::getTotalScore)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            averageMatchScore = total.divide(BigDecimal.valueOf(sampleScores.size()), 2, RoundingMode.HALF_UP);
+        }
+
+        List<DataIntegrationRecord> enterpriseRecords = dataIntegrationService.getTargetRecords("ENTERPRISE", enterprise.getId());
+        long verifiedRecords = enterpriseRecords.stream()
+                .filter(record -> "VERIFIED".equals(record.getVerificationStatus()))
+                .count();
+        long pendingVerificationRequests = jobIds.stream()
+                .flatMap(id -> dataIntegrationService.getTargetRecords("JOB", id).stream())
+                .filter(record -> "JOB_VERIFICATION_REQUEST".equals(record.getSourceType())
+                        && "PENDING".equals(record.getVerificationStatus()))
+                .count();
+
+        Map<String, Object> analytics = new LinkedHashMap<>();
+        analytics.put("activeJobs", openJobs);
+        analytics.put("closedJobs", closedJobs);
+        analytics.put("totalApplications", totalApplications);
+        analytics.put("pendingApplications", pendingApplications);
+        analytics.put("interviewingApplications", interviewingApplications);
+        analytics.put("matchedTalents", matchedTalents);
+        analytics.put("averageMatchScore", averageMatchScore);
+        analytics.put("verifiedRecords", verifiedRecords);
+        analytics.put("pendingVerificationRequests", pendingVerificationRequests);
+        analytics.put("trend", getDailyApplicationTrend(userId));
+        return analytics;
+    }
+
+    @Override
+    public DataIntegrationRecord submitJobVerificationRequest(Long userId, Long jobId, DataVerificationRequestDTO dto) {
+        EnterpriseInfo enterprise = requireEnterprise(userId);
+        JobPosition job = requireOwnedJob(enterprise, jobId);
+        DataVerificationRequestDTO payload = dto != null ? dto : new DataVerificationRequestDTO();
+        return dataIntegrationService.submitJobVerificationRequest(userId, job, payload, enterprise.getCompanyName());
+    }
+
+    private EnterpriseInfo requireEnterprise(Long userId) {
+        return enterpriseInfoRepository.findByUserId(userId)
+                .orElseThrow(() -> new BusinessException("Enterprise info not found"));
+    }
+
+    private JobPosition requireOwnedJob(EnterpriseInfo enterprise, Long jobId) {
+        JobPosition job = jobPositionRepository.findById(jobId)
+                .orElseThrow(() -> new BusinessException("Job not found"));
+        if (!job.getEnterpriseId().equals(enterprise.getId())) {
+            throw new BusinessException("Not authorized to access this job");
+        }
+        return job;
+    }
+
+    private StudentProfile resolveStudentProfileByProfileId(Long profileId) {
+        return studentProfileRepository.findById(profileId)
+                .orElseThrow(() -> new BusinessException("Student profile not found"));
+    }
+
+    private CandidateVO buildCandidateVO(StudentProfile profile, JobApplication application, Long jobId, boolean includeMatch) {
+        CandidateVO vo = new CandidateVO();
+        vo.setStudentId(profile.getId());
+        vo.setStudentUserId(profile.getUserId());
+        vo.setUniversity(profile.getUniversity());
+        vo.setMajor(profile.getMajor());
+        vo.setEducationLevel(profile.getEducationLevel());
+        vo.setEnrollmentYear(profile.getEnrollmentYear());
+        vo.setSkills(profile.getSkills());
+        vo.setSelfIntro(profile.getSelfIntro());
+        vo.setExpectedSalaryMin(profile.getExpectedSalaryMin());
+        vo.setExpectedSalaryMax(profile.getExpectedSalaryMax());
+        vo.setExpectedLocation(profile.getExpectedLocation());
+        vo.setAvailableSchedule(profile.getAvailableSchedule());
+        vo.setResumeAttachments(profile.getResumeAttachments());
+
+        sysUserRepository.findById(profile.getUserId()).ifPresent(user -> {
+            vo.setStudentName(user.getRealName());
+            vo.setAvatar(user.getAvatar());
+        });
+
+        if (application != null) {
+            vo.setApplicationId(application.getId());
+            vo.setStatus(application.getStatus());
+            vo.setApplyMessage(application.getApplyMessage());
+            vo.setEnterpriseRemark(application.getEnterpriseRemark());
+            vo.setAppliedAt(application.getCreatedAt());
+        }
+
+        if (includeMatch && jobId != null) {
+            matchScoreRepository.findByStudentIdAndJobId(profile.getId(), jobId).ifPresent(match -> {
+                vo.setMatchScore(match.getTotalScore());
+                vo.setSkillScore(match.getSkillScore());
+                vo.setSalaryScore(match.getSalaryScore());
+                vo.setLocationScore(match.getLocationScore());
+                vo.setScheduleScore(match.getScheduleScore());
+                vo.setRecommendationReason(buildRecommendationReason(match));
+            });
+        }
+
+        vo.setIntegratedSourceCount(dataIntegrationService.getTargetRecords("STUDENT", profile.getId()).size());
+        return vo;
+    }
+
+    private String buildRecommendationReason(MatchScore match) {
+        Map<String, BigDecimal> scoreMap = new LinkedHashMap<>();
+        scoreMap.put("skill", match.getSkillScore());
+        scoreMap.put("salary", match.getSalaryScore());
+        scoreMap.put("location", match.getLocationScore());
+        scoreMap.put("schedule", match.getScheduleScore());
+
+        return scoreMap.entrySet().stream()
+                .filter(entry -> entry.getValue() != null)
+                .max(Map.Entry.comparingByValue(Comparator.naturalOrder()))
+                .map(entry -> "Top strength: " + entry.getKey())
+                .orElse("Balanced recommendation");
+    }
+
+    private String normalizeFilter(String value) {
+        if (value == null) {
+            return null;
+        }
+        String normalized = value.trim();
+        return normalized.isEmpty() ? null : normalized;
     }
 }

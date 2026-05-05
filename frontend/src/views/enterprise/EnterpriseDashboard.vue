@@ -2,7 +2,7 @@
   <div class="enterprise-dashboard">
     <div class="welcome-header">
       <h2>你好，{{ userStore.userInfo.companyName || userStore.userInfo.realName }}！</h2>
-      <p class="subtitle">欢迎使用兼职匹配平台企业版，今日系统为您精准推荐合适的人才</p>
+      <p class="subtitle">欢迎使用兼职通企业版，今日系统为您精准推荐合适的人才</p>
     </div>
 
     <!-- Alert for uncertified enterprises -->

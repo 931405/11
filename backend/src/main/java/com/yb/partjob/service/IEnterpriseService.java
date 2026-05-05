@@ -5,9 +5,13 @@ import com.yb.partjob.model.JobPosition;
 import com.yb.partjob.model.StudentProfile;
 import com.yb.partjob.model.dto.JobPositionDTO;
 import com.yb.partjob.model.vo.CandidateVO;
+import com.yb.partjob.model.DataIntegrationRecord;
 import org.springframework.data.domain.Page;
 
 import com.yb.partjob.model.dto.InviteDTO;
+import com.yb.partjob.model.dto.DataVerificationRequestDTO;
+import java.util.List;
+import java.util.Map;
 
 public interface IEnterpriseService {
     EnterpriseInfo getEnterpriseInfo(Long userId);
@@ -26,7 +30,9 @@ public interface IEnterpriseService {
 
     StudentProfile getStudentProfile(Long studentUserId);
 
-    Page<CandidateVO> searchTalents(String keyword, int page, int size);
+    Page<CandidateVO> searchTalents(String keyword, String educationLevel, String major, String expectedLocation, int page, int size);
+
+    Map<String, List<String>> getTalentFilterOptions();
 
     Long inviteTalent(Long enterpriseUserId, InviteDTO dto);
 
@@ -38,4 +44,10 @@ public interface IEnterpriseService {
 
     Page<com.yb.partjob.model.vo.InterviewInvitationVO> getEnterpriseInvitations(Long enterpriseUserId, int page,
             int size);
+
+    Page<CandidateVO> getJobMatches(Long userId, Long jobId, int page, int size);
+
+    Map<String, Object> getEnterpriseAnalytics(Long userId);
+
+    DataIntegrationRecord submitJobVerificationRequest(Long userId, Long jobId, DataVerificationRequestDTO dto);
 }
