@@ -216,16 +216,15 @@ const router = createRouter({
 })
 
 // Navigation Guards
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
     const userStore = useUserStore()
 
     if (to.meta.requiresAuth && !userStore.token) {
-        next('/login')
+        return '/login'
     } else if (to.meta.role && userStore.userInfo.role !== to.meta.role) {
-        next('/')
-    } else {
-        next()
+        return '/'
     }
+    return true
 })
 
 export default router

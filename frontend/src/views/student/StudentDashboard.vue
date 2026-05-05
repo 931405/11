@@ -23,7 +23,7 @@
           <div class="side-promo-jobs">
             <div class="promo-job-header">🔥 内部热招</div>
             <div class="promo-job-list">
-              <div v-for="job in company.hotJobs" :key="job" class="promo-job-item">
+              <div v-for="job in company.hotJobs" :key="job" class="promo-job-item" @click.stop="quickSearch(job, company.name)">
                 <span class="job-dot"></span>{{ job }}
               </div>
             </div>
@@ -163,7 +163,7 @@
           <div class="side-promo-jobs">
             <div class="promo-job-header">🔥 内部热招</div>
             <div class="promo-job-list">
-              <div v-for="job in company.hotJobs" :key="job" class="promo-job-item">
+              <div v-for="job in company.hotJobs" :key="job" class="promo-job-item" @click.stop="quickSearch(job, company.name)">
                 <span class="job-dot"></span>{{ job }}
               </div>
             </div>
@@ -197,7 +197,14 @@ const searchKeyword = ref('')
 const searchType = ref('job')
 
 const goToEnterprise = (id) => {
-  // router.push(`/enterprise/${id}`)
+  router.push(`/student/enterprise/${id}`)
+}
+
+const quickSearch = (job, companyName) => {
+  router.push({
+    path: '/student/jobs',
+    query: { keyword: `${companyName} ${job}`, location: '' }
+  })
 }
 
 const promotedCompanies = [

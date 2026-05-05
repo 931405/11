@@ -184,6 +184,9 @@ onMounted(() => {
   if (route.query.enterpriseId) {
     searchForm.enterpriseId = route.query.enterpriseId
   }
+  if (route.query.location !== undefined) {
+    searchForm.location = route.query.location
+  }
   fetchCategories()
   fetchJobs()
 })
