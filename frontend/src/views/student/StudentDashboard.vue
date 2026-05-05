@@ -1,5 +1,44 @@
 <template>
-  <div class="dashboard-container">
+  <div class="student-dashboard-shell">
+    <aside class="side-promo side-promo-left">
+      <el-card
+        v-for="company in promotedCompanies.slice(0, 1)"
+        :key="`left-${company.id}`"
+        class="side-promo-card"
+        shadow="hover"
+        :body-style="{ padding: '0' }"
+        @click="goToEnterprise(company.id)"
+      >
+        <div class="side-promo-inner">
+          <div class="side-promo-badge">推广企业</div>
+          <el-avatar :size="50" shape="square" class="side-promo-logo">{{ company.name.charAt(0) }}</el-avatar>
+          <div class="side-promo-name">{{ company.name }}</div>
+          <div class="side-promo-industry">{{ company.industry }}</div>
+          <div class="side-promo-desc">{{ company.description }}</div>
+
+          <div class="side-promo-tags">
+            <span v-for="tag in company.tags" :key="tag" class="promo-tag">{{ tag }}</span>
+          </div>
+
+          <div class="side-promo-jobs">
+            <div class="promo-job-header">🔥 内部热招</div>
+            <div class="promo-job-list">
+              <div v-for="job in company.hotJobs" :key="job" class="promo-job-item">
+                <span class="job-dot"></span>{{ job }}
+              </div>
+            </div>
+          </div>
+
+          <div class="space-filler"></div>
+
+          <div class="side-promo-meta">{{ company.location }} | {{ company.jobCount }}个岗位</div>
+          <el-button type="primary" color="#00a6a7" size="small" @click.stop="goToEnterprise(company.id)">查看企业</el-button>
+        </div>
+      </el-card>
+    </aside>
+
+    <div class="dashboard-center-wrap">
+      <div class="dashboard-container">
     
     <!-- Top Search & Banner Area -->
     <div class="home-search-banner">
@@ -99,6 +138,45 @@
       </el-card>
     </div>
   </div>
+  </div>
+
+    <aside class="side-promo side-promo-right">
+      <el-card
+        v-for="company in promotedCompanies.slice(1, 2)"
+        :key="`right-${company.id}`"
+        class="side-promo-card"
+        shadow="hover"
+        :body-style="{ padding: '0' }"
+        @click="goToEnterprise(company.id)"
+      >
+        <div class="side-promo-inner">
+          <div class="side-promo-badge">推广企业</div>
+          <el-avatar :size="50" shape="square" class="side-promo-logo">{{ company.name.charAt(0) }}</el-avatar>
+          <div class="side-promo-name">{{ company.name }}</div>
+          <div class="side-promo-industry">{{ company.industry }}</div>
+          <div class="side-promo-desc">{{ company.description }}</div>
+
+          <div class="side-promo-tags">
+            <span v-for="tag in company.tags" :key="tag" class="promo-tag">{{ tag }}</span>
+          </div>
+
+          <div class="side-promo-jobs">
+            <div class="promo-job-header">🔥 内部热招</div>
+            <div class="promo-job-list">
+              <div v-for="job in company.hotJobs" :key="job" class="promo-job-item">
+                <span class="job-dot"></span>{{ job }}
+              </div>
+            </div>
+          </div>
+
+          <div class="space-filler"></div>
+
+          <div class="side-promo-meta">{{ company.location }} | {{ company.jobCount }}个岗位</div>
+          <el-button type="primary" color="#00a6a7" size="small" @click.stop="goToEnterprise(company.id)">查看企业</el-button>
+        </div>
+      </el-card>
+    </aside>
+  </div>
 </template>
 
 <script setup>
@@ -117,6 +195,33 @@ const loading = ref(false)
 const recommendedJobs = ref([])
 const searchKeyword = ref('')
 const searchType = ref('job')
+
+const goToEnterprise = (id) => {
+  // router.push(`/enterprise/${id}`)
+}
+
+const promotedCompanies = [
+  { 
+    id: 1, 
+    name: '字节跳动', 
+    industry: '互联网/科技', 
+    description: '全球领先的科技公司，提供丰富的技术、产品和运营实习岗位机会。', 
+    location: '北京', 
+    jobCount: 15,
+    tags: ['弹性工作', '就近租房补贴', '免费三餐', '大牛带队'],
+    hotJobs: ['前端实习生', '后端开发实习', '产品经理助理', '运营实习生', '算法工程师']
+  },
+  { 
+    id: 2, 
+    name: '腾讯', 
+    industry: '互联网/科技', 
+    description: '覆盖产品、研发、设计等方向，适合希望进入头部互联网企业的同学。', 
+    location: '深圳', 
+    jobCount: 12,
+    tags: ['海量历练', '鹅厂福利', '班车接送', '完善培训'],
+    hotJobs: ['产品策划实习生', 'iOS开发实习', '游戏运营实习', '交互设计', '数据分析实习']
+  }
+]
 
 const mainTabs = ['校招', '实习', '社招', '兼职']
 const subTabs = ['综合', '暑期实习', '远程实习', '应届实习']
@@ -200,6 +305,32 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.student-dashboard-shell { position: relative; min-height: 100%; }
+.dashboard-center-wrap { width: min(100%, 1180px); margin: 0 auto; }
+.side-promo { position: fixed; top: 96px; width: 200px; z-index: 30; }
+.side-promo-left { left: max(12px, calc((100vw - 1180px) / 2 - 220px)); }
+.side-promo-right { right: max(12px, calc((100vw - 1180px) / 2 - 220px)); }
+.side-promo-card { overflow: hidden; cursor: pointer; border-radius: 16px; border: none; box-shadow: 0 4px 20px rgba(0,0,0,0.05); transition: transform 0.3s, box-shadow 0.3s; }
+.side-promo-card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0, 166, 167, 0.15); }
+.side-promo-inner { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 24px 16px 20px; background: linear-gradient(180deg, #f0fdfc 0%, #ffffff 60%); position: relative; min-height: 900px; }
+.side-promo-badge { position: absolute; top: 0; left: 0; padding: 4px 10px; border-radius: 0 0 12px 0; background: linear-gradient(90deg, #ff9a44, #fc6076); color: #fff; font-size: 12px; font-weight: 600; box-shadow: 2px 2px 8px rgba(255, 154, 68, 0.3); }
+.side-promo-logo { margin-top: 12px; background: linear-gradient(135deg, #12b3a8, #0f766e); color: #fff; font-size: 24px; font-weight: bold; box-shadow: 0 4px 12px rgba(18, 179, 168, 0.3); border: 2px solid #fff; }
+.side-promo-name { color: #1f2937; font-size: 18px; font-weight: 800; margin-top: 8px; }
+.side-promo-industry { color: #00a6a7; font-size: 12px; background: rgba(0, 166, 167, 0.1); padding: 4px 12px; border-radius: 20px; margin-bottom: 8px; }
+.side-promo-desc { color: #6b7280; font-size: 13px; line-height: 1.6; text-align: justify; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.side-promo-tags { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 12px; }
+.promo-tag { padding: 2px 8px; background: #e5f6f6; color: #008f90; font-size: 11px; border-radius: 4px; }
+.side-promo-jobs { margin-top: 24px; width: 100%; text-align: left; }
+.promo-job-header { font-size: 14px; font-weight: 700; color: #374151; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px dashed #e8eef2; }
+.promo-job-list { display: flex; flex-direction: column; gap: 10px; }
+.promo-job-item { font-size: 13px; color: #4b5563; display: flex; align-items: center; cursor: pointer; transition: color 0.2s; }
+.promo-job-item:hover { color: #00a6a7; }
+.job-dot { width: 6px; height: 6px; border-radius: 50%; background: #00a6a7; margin-right: 8px; flex-shrink: 0; }
+.space-filler { margin-bottom: auto; }
+.side-promo-meta { color: #9ca3af; font-size: 12px; margin: 12px 0; display: flex; align-items: center; gap: 6px; }
+.side-promo-card .el-button { width: 100%; border-radius: 8px; font-weight: 600; font-size: 14px; padding: 10px 0; letter-spacing: 1px; transition: all 0.3s; }
+.side-promo-card .el-button:hover { background-color: #008f90; transform: scale(1.02); }
+
 .dashboard-container {
   padding-top: 10px;
 }
