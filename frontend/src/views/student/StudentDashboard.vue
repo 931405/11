@@ -48,7 +48,7 @@
       <div class="search-box-large">
         <el-input v-model="searchKeyword" class="main-search-input" :placeholder="`搜索${activeMainTab}职位、公司`" @keyup.enter="handleSearch">
           <template #prepend>
-            <el-select v-model="searchType" style="width: 100px" placeholder="职位类型">
+            <el-select v-model="searchType" style="width: 120px" placeholder="职位类型">
               <el-option label="职位类型" value="job" />
               <el-option label="公司名称" value="company" />
             </el-select>
@@ -406,7 +406,7 @@ onMounted(() => {
   border: none;
   border-right: 1px solid #e4e7ed;
   border-radius: 0;
-  padding: 0;
+  padding: 0 10px 0 20px;
   box-shadow: none !important;
 }
 
